@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "polite_submit"
+version = "0.1.0"
+description = "Client-side contention management for Slurm HPC clusters using CSMA/CA-inspired backoff"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Andrew H. Bond", email = "andrew.bond@sjsu.edu"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: System :: Distributed Computing",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "click>=8.0.0",
+  "pyyaml>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0.0",
+  "black==24.4.2",
+  "ruff>=0.4.8",
+  "mypy>=1.0.0",
+]
+
+[project.scripts]
+polite_submit = "polite_submit.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+
+[project.urls]
+"Homepage" = "https://github.com/ahb-sjsu/polite-submit"
+"Bug Tracker" = "https://github.com/ahb-sjsu/polite-submit/issues"

@@ -1,0 +1,39 @@
+# polite_submit Configuration
+# Copy to ~/.polite_submit.yaml or ./polite_submit.yaml
+
+# Cluster connection settings
+cluster:
+  host: null                   # SSH host alias (null for local Slurm)
+  username: null               # Slurm username (null = auto-detect from $USER)
+  partition: gpu               # Default partition to query and submit to
+
+# Politeness thresholds - when to back off
+politeness:
+  max_concurrent_jobs: 4       # Max jobs you can have running simultaneously
+  max_pending_jobs: 2          # Max jobs you can have waiting in queue
+  queue_depth_threshold: 10    # Back off if this many OTHER users have pending jobs
+  utilization_threshold: 0.85  # Back off if cluster utilization exceeds this (0.0-1.0)
+
+# Peak hours - stricter limits during business hours
+peak_hours:
+  enabled: true
+  schedule:                    # List of [start_hour, end_hour] in 24h format
+    - [9, 17]                  # 9 AM - 5 PM weekdays
+  max_concurrent: 2            # Stricter limit during peak hours
+  weekend_exempt: true         # No peak restrictions on Saturday/Sunday
+
+# Backoff timing - exponential backoff with jitter
+backoff:
+  initial_seconds: 30          # First backoff wait time
+  max_seconds: 1800            # Maximum backoff (30 minutes)
+  multiplier: 2.0              # Backoff doubles each attempt
+  max_attempts: 20             # Give up after this many tries
+
+# Array job settings
+array:
+  chunk_size: 10               # Submit large arrays in chunks of this size
+
+# Logging
+logging:
+  level: INFO                  # DEBUG, INFO, WARNING, ERROR
+  file: null                   # Log file path (null = no file logging)
