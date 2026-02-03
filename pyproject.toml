@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "polite_submit"
-version = "0.1.0"
+version = "0.1.1"
 description = "Client-side contention management for Slurm HPC clusters using CSMA/CA-inspired backoff"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,5 +1,7 @@
 """Tests for the backoff module."""
 
+from unittest.mock import patch
+
 from polite_submit.backoff import BackoffController, format_duration
 from polite_submit.config import Config
 
@@ -95,6 +97,62 @@ class TestBackoffController:
         s = str(controller)
         assert "attempt=2" in s
         assert "total=90" in s
+
+    def test_wait_calls_sleep(self):
+        controller = BackoffController(
+            initial_backoff=10,
+            jitter_range=(1.0, 1.0),  # No jitter for predictable test
+        )
+        with patch("polite_submit.backoff.time.sleep") as mock_sleep:
+            wait_time = controller.wait()
+            assert wait_time == 10
+            mock_sleep.assert_called_once_with(10)
+            assert controller.attempt == 1
+            assert controller.total_wait == 10
+
+    def test_wait_increments_state(self):
+        controller = BackoffController(
+            initial_backoff=5,
+            jitter_range=(1.0, 1.0),
+        )
+        with patch("polite_submit.backoff.time.sleep"):
+            controller.wait()  # 5
+            controller.wait()  # 10
+            controller.wait()  # 20
+
+            assert controller.attempt == 3
+            assert controller.total_wait == 35
+
+    def test_wait_respects_max_backoff(self):
+        controller = BackoffController(
+            initial_backoff=100,
+            max_backoff=50,
+            jitter_range=(1.0, 1.0),
+        )
+        with patch("polite_submit.backoff.time.sleep") as mock_sleep:
+            wait_time = controller.wait()
+            assert wait_time == 50  # Capped at max
+            mock_sleep.assert_called_once_with(50)
+
+    def test_next_wait_estimate(self):
+        controller = BackoffController(
+            initial_backoff=10,
+            multiplier=2.0,
+        )
+        assert controller.next_wait_estimate == 10
+        controller.attempt = 1
+        assert controller.next_wait_estimate == 20
+        controller.attempt = 2
+        assert controller.next_wait_estimate == 40
+
+    def test_next_wait_estimate_respects_max(self):
+        controller = BackoffController(
+            initial_backoff=100,
+            max_backoff=150,
+            multiplier=2.0,
+        )
+        controller.attempt = 5  # Would be 100 * 32 = 3200
+        assert controller.next_wait_estimate == 150
 
 
 class TestFormatDuration:
