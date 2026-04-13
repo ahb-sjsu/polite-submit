@@ -20,9 +20,11 @@ class Config:
     """Configuration for polite-submit behavior."""
 
     # Cluster connection
+    backend: str = "slurm"  # "slurm" or "k8s"
     host: Optional[str] = None  # SSH host alias, None for local
     username: Optional[str] = None  # Slurm username, defaults to $USER
-    partition: str = "gpu"  # Default partition
+    partition: str = "gpu"  # Default partition (Slurm)
+    namespace: Optional[str] = None  # Kubernetes namespace (K8s only)
 
     # Politeness thresholds
     max_concurrent: int = 4  # Max running jobs at once
@@ -54,9 +56,11 @@ class Config:
     def aggressive_mode(self) -> Config:
         """Return a copy with aggressive (less polite) settings."""
         return Config(
+            backend=self.backend,
             host=self.host,
             username=self.username,
             partition=self.partition,
+            namespace=self.namespace,
             max_concurrent=100,
             max_pending=100,
             queue_threshold=1000,
@@ -132,9 +136,11 @@ def _load_yaml_config(path: Path) -> Config:
 
     return Config(
         # Cluster
+        backend=cluster.get("backend", "slurm"),
         host=cluster.get("host"),
         username=cluster.get("username"),
         partition=cluster.get("partition", "gpu"),
+        namespace=cluster.get("namespace"),
         # Politeness
         max_concurrent=politeness.get("max_concurrent_jobs", 4),
         max_pending=politeness.get("max_pending_jobs", 2),

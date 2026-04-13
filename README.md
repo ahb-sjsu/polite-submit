@@ -49,22 +49,54 @@ polite_submit --dry-run job.sh
 
 # Skip politeness (late night, aggressive mode)
 polite_submit --aggressive job.sh
+
+# Kubernetes job on NRP Nautilus (auto-detected from .yaml extension)
+polite_submit --backend k8s --namespace my-ns training-job.yaml
 ```
 
 ## How It Works
 
 Before each submission, `polite_submit`:
 
-1. **Probes cluster state** via `sinfo` and `squeue`
+1. **Probes cluster state**
+   - **Slurm**: `sinfo` for partition load, `squeue` for your jobs and
+     pending queue.
+   - **Kubernetes**: `kubectl top nodes` (or `kubectl get nodes` if
+     metrics-server is unavailable) for utilization, `kubectl get jobs
+     -n <ns>` for your jobs, and `kubectl get pods --all-namespaces
+     --field-selector=status.phase=Pending` for queue depth.
 2. **Checks thresholds:**
    - Am I running too many jobs? (default: 4)
    - Do I have too many pending? (default: 2)
    - Are others waiting? (default: threshold 10)
    - Is cluster utilization high? (default: 85%)
-3. **If any threshold exceeded:** Back off with exponential delay
-4. **If clear:** Submit via `sbatch`
+3. **If any threshold exceeded:** Back off with exponential delay.
+4. **If clear:** Submit via the configured backend (`sbatch` or
+   `kubectl apply`).
 
-This mirrors CSMA/CA (Carrier-Sense Multiple Access with Collision Avoidance) from WiFi protocols.
+This mirrors CSMA/CA (Carrier-Sense Multiple Access with Collision
+Avoidance) from WiFi protocols.
+
+### Kubernetes / NRP Nautilus
+
+polite_submit works with any Kubernetes cluster where you can run
+`kubectl`. For the NRP Nautilus cluster specifically, reasonable
+starting thresholds:
+
+```yaml
+cluster:
+  backend: k8s
+  namespace: your-namespace
+politeness:
+  max_concurrent_jobs: 50       # Nautilus is big
+  max_pending_jobs: 20
+  queue_depth_threshold: 200    # cluster-wide pending pods tolerated
+  utilization_threshold: 0.90
+```
+
+If your cluster role does not grant cluster-wide pod read access, the
+`others_pending` signal silently degrades to 0; the decider then
+relies on your self-limiting thresholds + node utilization alone.
 
 ## Configuration
 

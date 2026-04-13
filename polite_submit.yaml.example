@@ -3,9 +3,21 @@
 
 # Cluster connection settings
 cluster:
-  host: null                   # SSH host alias (null for local Slurm)
+  backend: slurm               # "slurm" (default) or "k8s" (Kubernetes, e.g. NRP Nautilus)
+  host: null                   # SSH host alias (null for local)
   username: null               # Slurm username (null = auto-detect from $USER)
-  partition: gpu               # Default partition to query and submit to
+  partition: gpu               # Default Slurm partition
+  namespace: null              # Kubernetes namespace (required when backend: k8s)
+
+# ---- Kubernetes / NRP Nautilus example ----
+# cluster:
+#   backend: k8s
+#   namespace: your-namespace
+# politeness:
+#   max_concurrent_jobs: 50       # Nautilus is large; stricter defaults waste capacity
+#   max_pending_jobs: 20
+#   queue_depth_threshold: 200    # cluster-wide pending pods tolerated
+#   utilization_threshold: 0.90
 
 # Politeness thresholds - when to back off
 politeness:

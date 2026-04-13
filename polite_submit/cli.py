@@ -15,7 +15,9 @@ import click
 from polite_submit.backoff import BackoffController, format_duration
 from polite_submit.config import Config, get_effective_username, load_config
 from polite_submit.decider import Decision, decide
-from polite_submit.prober import probe, run_cmd
+from polite_submit.prober import probe, run_cmd  # probe kept at module scope for test patching
+from polite_submit.prober_k8s import probe as probe_k8s_fn
+from polite_submit.submit_k8s import submit_job_k8s
 
 
 def echo_status(message: str, level: str = "info") -> None:
@@ -37,17 +39,22 @@ def submit_job(
     extra_args: Optional[list[str]] = None,
 ) -> Optional[str]:
     """
-    Submit a single job via sbatch.
+    Submit a single job via the configured backend (``sbatch`` for Slurm,
+    ``kubectl apply`` for Kubernetes).
 
     Args:
-        script: Path to job script
+        script: Path to job script (Slurm) or manifest YAML (K8s)
         config: Configuration
         dry_run: If True, don't actually submit
-        extra_args: Additional sbatch arguments
+        extra_args: Additional backend-specific arguments
 
     Returns:
-        Job ID if successful, None otherwise
+        Job ID / name if successful, None otherwise
     """
+    if config.backend == "k8s":
+        return submit_job_k8s(script, config, dry_run=dry_run, extra_args=extra_args)
+
+    # Default: Slurm
     cmd_parts = ["sbatch"]
     if extra_args:
         cmd_parts.extend(extra_args)
@@ -73,6 +80,22 @@ def submit_job(
         return None
 
 
+def probe_cluster(config: Config):
+    """Dispatch to the right prober based on ``config.backend``.
+
+    Uses module-level ``probe`` and ``probe_k8s_fn`` names directly so
+    that tests patching ``polite_submit.cli.probe`` continue to work.
+    """
+    if config.backend == "k8s":
+        ns = config.namespace or "default"
+        return probe_k8s_fn(namespace=ns, host=config.host)
+    return probe(
+        partition=config.partition,
+        username=get_effective_username(config),
+        host=config.host,
+    )
+
+
 def submit_single(
     script: str,
     config: Config,
@@ -94,6 +117,7 @@ def submit_single(
     backoff = BackoffController.from_config(config)
     username = get_effective_username(config)
 
+    _ = username  # kept for backwards compat; actual identity handled by prober
     while not backoff.should_abort:
         # Probe cluster state
         if dry_run:
@@ -101,11 +125,7 @@ def submit_single(
 
             state = probe_mock(utilization=0.5)
         else:
-            state = probe(
-                partition=config.partition,
-                username=username,
-                host=config.host,
-            )
+            state = probe_cluster(config)
 
         # Make decision
         decision, reason = decide(state, config)
@@ -273,6 +293,16 @@ def submit_array_chunked(
     "-H",
     help="SSH host for remote cluster",
 )
+@click.option(
+    "--backend",
+    type=click.Choice(["slurm", "k8s"], case_sensitive=False),
+    help="Submission backend (default: from config, or auto-detected from file ext)",
+)
+@click.option(
+    "--namespace",
+    "-N",
+    help="Kubernetes namespace (K8s backend only)",
+)
 @click.version_option()
 def main(
     script: Optional[str],
@@ -285,6 +315,8 @@ def main(
     config_path: Optional[str],
     partition: Optional[str],
     host: Optional[str],
+    backend: Optional[str],
+    namespace: Optional[str],
 ) -> None:
     """
     Submit jobs politely with CSMA/CA-inspired contention backoff.
@@ -310,8 +342,43 @@ def main(
         config.host = host
     if chunk:
         config.array_chunk_size = chunk
+    if backend:
+        config.backend = backend.lower()
+    if namespace:
+        config.namespace = namespace
+
+    # Auto-detect K8s from YAML manifest extension if backend not set
+    def _looks_like_k8s(path: Optional[str]) -> bool:
+        return bool(path and path.lower().endswith((".yaml", ".yml")))
+
+    if not backend and config.backend == "slurm":
+        if (
+            _looks_like_k8s(script)
+            or any(_looks_like_k8s(b) for b in batch)
+            or _looks_like_k8s(array)
+        ):
+            config.backend = "k8s"
+            echo_status(
+                "Auto-detected Kubernetes backend from manifest extension",
+                "info",
+            )
+
     if aggressive:
         config = config.aggressive_mode()
+
+    # Guard: K8s needs a namespace
+    if config.backend == "k8s" and not config.namespace:
+        raise click.UsageError(
+            "Kubernetes backend requires a namespace. "
+            "Set 'cluster.namespace' in config or pass --namespace."
+        )
+
+    # Guard: K8s backend does not support --array (no Slurm array semantics).
+    if config.backend == "k8s" and array:
+        raise click.UsageError(
+            "--array is a Slurm concept. "
+            "For K8s, use Job parallelism or submit a batch of manifests."
+        )
 
     # Validate arguments
     if array and not array_range:
