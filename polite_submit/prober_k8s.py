@@ -37,7 +37,11 @@ def _kubectl(
     """Run a ``kubectl`` subcommand and return stdout, or empty on error."""
     try:
         return run_cmd(f"kubectl {args}", host=host, timeout=timeout)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         return ""
 
 
@@ -62,8 +66,7 @@ def parse_nodes(nodes_json: str) -> tuple[int, int, int]:
     for node in items:
         conditions = node.get("status", {}).get("conditions", [])
         is_ready = any(
-            c.get("type") == "Ready" and c.get("status") == "True"
-            for c in conditions
+            c.get("type") == "Ready" and c.get("status") == "True" for c in conditions
         )
         # Skip nodes that are SchedulingDisabled or NotReady
         spec = node.get("spec", {})
@@ -197,8 +200,7 @@ def probe(
 
     # ---- Global pending pressure (cluster-wide, may require RBAC)
     pending_json = _kubectl(
-        "get pods --all-namespaces "
-        "--field-selector=status.phase=Pending -o json",
+        "get pods --all-namespaces " "--field-selector=status.phase=Pending -o json",
         host=host,
     )
     others_pending = parse_pending_pods(pending_json, namespace)

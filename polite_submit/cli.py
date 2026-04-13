@@ -15,7 +15,10 @@ import click
 from polite_submit.backoff import BackoffController, format_duration
 from polite_submit.config import Config, get_effective_username, load_config
 from polite_submit.decider import Decision, decide
-from polite_submit.prober import probe, run_cmd  # probe kept at module scope for test patching
+from polite_submit.prober import (
+    probe,
+    run_cmd,
+)  # probe kept at module scope for test patching
 from polite_submit.prober_k8s import probe as probe_k8s_fn
 from polite_submit.submit_k8s import submit_job_k8s
 

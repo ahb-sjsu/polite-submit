@@ -16,8 +16,8 @@ from polite_submit.prober_k8s import (
     probe,
 )
 
-
 # ─── parse_nodes ─────────────────────────────────────────────────
+
 
 def test_parse_nodes_empty() -> None:
     assert parse_nodes("") == (0, 0, 0)
@@ -32,27 +32,19 @@ def test_parse_nodes_counts_ready_and_skips_unschedulable() -> None:
         "items": [
             {
                 "spec": {},
-                "status": {
-                    "conditions": [{"type": "Ready", "status": "True"}]
-                },
+                "status": {"conditions": [{"type": "Ready", "status": "True"}]},
             },
             {
                 "spec": {},
-                "status": {
-                    "conditions": [{"type": "Ready", "status": "True"}]
-                },
+                "status": {"conditions": [{"type": "Ready", "status": "True"}]},
             },
             {
                 "spec": {},
-                "status": {
-                    "conditions": [{"type": "Ready", "status": "False"}]
-                },
+                "status": {"conditions": [{"type": "Ready", "status": "False"}]},
             },
             {
                 "spec": {"unschedulable": True},
-                "status": {
-                    "conditions": [{"type": "Ready", "status": "True"}]
-                },
+                "status": {"conditions": [{"type": "Ready", "status": "True"}]},
             },
         ]
     }
@@ -63,6 +55,7 @@ def test_parse_nodes_counts_ready_and_skips_unschedulable() -> None:
 
 
 # ─── parse_top_nodes ─────────────────────────────────────────────
+
 
 def test_parse_top_nodes_empty() -> None:
     assert parse_top_nodes("") == (0, 0)
@@ -99,6 +92,7 @@ def test_parse_top_nodes_ignores_malformed_rows() -> None:
 
 # ─── parse_jobs ──────────────────────────────────────────────────
 
+
 def test_parse_jobs_empty() -> None:
     assert parse_jobs("") == (0, 0)
 
@@ -119,6 +113,7 @@ def test_parse_jobs_counts_active_and_pending() -> None:
 
 # ─── parse_pending_pods ──────────────────────────────────────────
 
+
 def test_parse_pending_pods_counts_other_namespaces() -> None:
     data = {
         "items": [
@@ -138,6 +133,7 @@ def test_parse_pending_pods_empty() -> None:
 
 # ─── _kubectl graceful fallback ──────────────────────────────────
 
+
 def test_kubectl_returns_empty_on_failure() -> None:
     def boom(*_a, **_kw):
         raise subprocess.CalledProcessError(1, "kubectl", "", "nope")
@@ -153,12 +149,17 @@ def test_kubectl_returns_empty_on_missing_binary() -> None:
 
 # ─── end-to-end probe() ──────────────────────────────────────────
 
-def _fake_outputs(*, top: str = "", jobs_json: str = "", pending_json: str = "",
-                  nodes_json: str = "") -> dict[str, str]:
+
+def _fake_outputs(
+    *, top: str = "", jobs_json: str = "", pending_json: str = "", nodes_json: str = ""
+) -> dict[str, str]:
+    pending_key = (
+        "get pods --all-namespaces " "--field-selector=status.phase=Pending -o json"
+    )
     return {
         "top nodes --no-headers": top,
         "get nodes -o json": nodes_json,
-        "get pods --all-namespaces --field-selector=status.phase=Pending -o json": pending_json,
+        pending_key: pending_json,
     }
 
 

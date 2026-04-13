@@ -74,8 +74,7 @@ class TestLoadConfig:
 
     def test_load_explicit_path(self, tmp_path):
         config_file = tmp_path / "test-config.yaml"
-        config_file.write_text(
-            """
+        config_file.write_text("""
 cluster:
   partition: test-partition
   host: test-host
@@ -101,8 +100,7 @@ array:
 logging:
   level: DEBUG
   file: /tmp/polite.log
-"""
-        )
+""")
         config = load_config(str(config_file))
 
         assert config.partition == "test-partition"
@@ -127,12 +125,10 @@ logging:
     def test_load_from_cwd(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
         config_file = tmp_path / "polite-submit.yaml"
-        config_file.write_text(
-            """
+        config_file.write_text("""
 cluster:
   partition: cwd-partition
-"""
-        )
+""")
         config = load_config(None)
         assert config.partition == "cwd-partition"
 
@@ -144,12 +140,10 @@ cluster:
 
         # Put config in home
         home_config = tmp_path / ".polite-submit.yaml"
-        home_config.write_text(
-            """
+        home_config.write_text("""
 cluster:
   partition: home-partition
-"""
-        )
+""")
         with patch.object(Path, "home", return_value=tmp_path):
             config = load_config(None)
             assert config.partition == "home-partition"
@@ -164,12 +158,10 @@ cluster:
         config_dir = tmp_path / ".config" / "polite-submit"
         config_dir.mkdir(parents=True)
         config_file = config_dir / "config.yaml"
-        config_file.write_text(
-            """
+        config_file.write_text("""
 cluster:
   partition: config-dir-partition
-"""
-        )
+""")
         with patch.object(Path, "home", return_value=tmp_path):
             config = load_config(None)
             assert config.partition == "config-dir-partition"
@@ -183,12 +175,10 @@ cluster:
 
     def test_load_partial_yaml(self, tmp_path):
         config_file = tmp_path / "partial.yaml"
-        config_file.write_text(
-            """
+        config_file.write_text("""
 cluster:
   partition: partial-partition
-"""
-        )
+""")
         config = load_config(str(config_file))
         assert config.partition == "partial-partition"
         # Other values should be defaults
