@@ -77,6 +77,35 @@ Before each submission, `polite_submit`:
 This mirrors CSMA/CA (Carrier-Sense Multiple Access with Collision
 Avoidance) from WiFi protocols.
 
+```mermaid
+flowchart TB
+    START[polite_submit job.sh]
+    PROBE[Probe cluster state]
+    subgraph CHECKS[Threshold checks]
+      C1[My running jobs 4+]
+      C2[My pending 2+]
+      C3[Others waiting 10+]
+      C4[Cluster util 85 pct+]
+    end
+    HOT{Any over?}
+    BACKOFF[Exponential backoff<br/>with jitter]
+    SUBMIT[sbatch or kubectl apply]
+    DONE[Submitted]
+
+    START --> PROBE --> CHECKS --> HOT
+    HOT -->|yes| BACKOFF --> PROBE
+    HOT -->|no| SUBMIT --> DONE
+
+    classDef start fill:#e3f2fd,stroke:#1565c0;
+    classDef check fill:#fff3e0,stroke:#e65100;
+    classDef back fill:#ffcdd2,stroke:#b71c1c;
+    classDef ok fill:#c8e6c9,stroke:#1b5e20;
+    class START start;
+    class C1,C2,C3,C4,HOT,PROBE check;
+    class BACKOFF back;
+    class SUBMIT,DONE ok;
+```
+
 ### Kubernetes / NRP Nautilus
 
 polite_submit works with any Kubernetes cluster where you can run
